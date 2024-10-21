@@ -7,7 +7,7 @@ This is a C# OpenGL engine designed to demonstrate 2D rendering, including suppo
 
 ## Features
 
--   **2D Rendering:** Basic 2D shapes, such as triangles, can be rendered with ease.
+-   **2D Rendering:** Basic 2D shapes and images.
 -   **GUI Integration:** Includes support for creating and displaying GUI windows.
 -   **Customizable:** Expandable and easy to modify for adding additional features or more complex graphics.
 -   **Open Source:** Contributions are welcome!
@@ -16,10 +16,12 @@ This is a C# OpenGL engine designed to demonstrate 2D rendering, including suppo
 
 -   .NET 6.0 or higher
 -   OpenGL-compatible hardware
--   GLFW and GLAD for windowing and OpenGL context creation
 
 ## Installation
 
-1.  Clone the repository:
-    
-    bash
+Git clone the repo:
+
+    git clone https://github.com/EZroot/OpenGL-Engine.git
+
+- Build the project using your preferred IDE (Visual Studio, Rider, etc.)
+- Ensure you have the necessary OpenGL libraries installed on your system (GLFW, GLAD).
