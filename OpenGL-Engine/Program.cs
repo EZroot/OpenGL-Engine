@@ -80,11 +80,11 @@ namespace OpenGLTriangle
         }
         private void InitializeTriangle()
         {
-            float[] vertices = {
-                 0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f, 
-                 0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 
-                -0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f  
-            };
+float[] vertices = {
+         0.0f,  0.8f, 0.0f,  1.0f, 0.0f, 0.0f,   
+         0.8f, -0.8f, 0.0f,  0.0f, 1.0f, 0.0f,   
+        -0.8f, -0.8f, 0.0f,  0.0f, 0.0f, 1.0f    
+    };
             _triangleVao = GL.GenVertexArray();
             GL.BindVertexArray(_triangleVao);
             _triangleVbo = GL.GenBuffer();
@@ -160,32 +160,49 @@ namespace OpenGLTriangle
                 Close();
             }
         }
-        protected override void OnRenderFrame(FrameEventArgs args)
-        {
-            base.OnRenderFrame(args);
-            _imGuiController.Update(this, (float)args.Time);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-            GL.UseProgram(_triangleShaderProgram);
-            GL.BindVertexArray(_triangleVao);
-            GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
-            GL.BindVertexArray(0);
-            GL.UseProgram(0);
-            ImGui.Begin("Sample Window");
-            ImGui.Text("This is a UI window with a close button and background panel.");
-            if (ImGui.Button("Close"))
-            {
-                Console.WriteLine("Close button clicked!");
-            }
-            ImGui.End();
-            _imGuiController.Render();
-            SwapBuffers();
-        }
+        private void CheckOpenGLError(string context)
+{
+    ErrorCode error;
+    while ((error = GL.GetError()) != ErrorCode.NoError)
+    {
+        Console.WriteLine($"OpenGL Error in {context}: {error}");
+    }
+}
+protected override void OnRenderFrame(FrameEventArgs args)
+{
+    base.OnRenderFrame(args);
+    _imGuiController.Update(this, (float)args.Time);
+    GL.Enable(EnableCap.DepthTest);  
+    GL.Disable(EnableCap.Blend);     
+    GL.Viewport(0, 0, FramebufferSize.X, FramebufferSize.Y);  
+    GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+    CheckOpenGLError("Clear");
+    GL.UseProgram(_triangleShaderProgram);
+    CheckOpenGLError("UseProgram");
+    GL.BindVertexArray(_triangleVao);
+    CheckOpenGLError("Bind VAO");
+    GL.DrawArrays(PrimitiveType.Triangles, 0, 3);  
+    CheckOpenGLError("DrawArrays");
+    GL.BindVertexArray(0);
+    GL.UseProgram(0);
+    GL.Disable(EnableCap.DepthTest);  
+    GL.Enable(EnableCap.Blend);       
+    GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);  
+    ImGui.Begin("Sample Window");
+    ImGui.Text("This is a UI window with a close button and background panel.");
+    if (ImGui.Button("Close"))
+    {
+        Console.WriteLine("Close button clicked!");
+    }
+    ImGui.End();
+    _imGuiController.Render();
+    SwapBuffers();
+}
         protected override void OnResize(ResizeEventArgs e)
         {
             base.OnResize(e);
             var framebufferSize = this.FramebufferSize;
             GL.Viewport(0, 0, framebufferSize.X, framebufferSize.Y);
-            Console.WriteLine($"[DEBUG] Viewport set to: {framebufferSize.X}x{framebufferSize.Y}");
             _imGuiController.WindowResized(framebufferSize.X, framebufferSize.Y);
         }
         protected override void OnUnload()
@@ -228,7 +245,6 @@ namespace OpenGLTriangle
             _framebufferHeight = framebufferHeight;
             CreateDeviceResources();
             SetPerFrameImGuiData(1f / 60f, _framebufferWidth, _framebufferHeight);
-            Console.WriteLine($"[DEBUG] ImGuiController DisplaySize set to: {framebufferWidth}x{framebufferHeight} and DPI Scale: X={_dpiScaleX}, Y={_dpiScaleY}");
             ImGui.NewFrame();
             _frameBegun = true;
         }
@@ -323,114 +339,111 @@ namespace OpenGLTriangle
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
             GL.BindVertexArray(0);
         }
-        public void Update(GameWindow wnd, float deltaSeconds)
-        {
-            if (_frameBegun)
-            {
-                ImGui.Render();
-            }
-            _framebufferWidth = wnd.FramebufferSize.X;
-            _framebufferHeight = wnd.FramebufferSize.Y;
-            SetPerFrameImGuiData(deltaSeconds, _framebufferWidth, _framebufferHeight);
-            UpdateImGuiInput(wnd);
-            _frameBegun = true;
-            ImGui.NewFrame();
-        }
-        private void SetPerFrameImGuiData(float deltaSeconds, int framebufferWidth, int framebufferHeight)
-        {
-            ImGuiIOPtr io = ImGui.GetIO();
-            io.DisplaySize = new SystemVector2(framebufferWidth / _dpiScaleX, framebufferHeight / _dpiScaleY);
-            io.DisplayFramebufferScale = new SystemVector2(_dpiScaleX, _dpiScaleY);
-            io.DeltaTime = deltaSeconds; 
-            Console.WriteLine($"[DEBUG] SetPerFrameImGuiData - DisplaySize: {io.DisplaySize.X}x{io.DisplaySize.Y}, FramebufferScale: {io.DisplayFramebufferScale.X}x{io.DisplayFramebufferScale.Y}");
-        }
-        private byte BoolToByte(bool value) => value ? (byte)1 : (byte)0;
-private void UpdateImGuiInput(GameWindow wnd)
+public void Update(GameWindow wnd, float deltaSeconds)
+{
+    if (_frameBegun)
+    {
+        ImGui.Render();
+    }
+    _framebufferWidth = wnd.FramebufferSize.X;
+    _framebufferHeight = wnd.FramebufferSize.Y;
+    _dpiScaleX = (float)wnd.FramebufferSize.X / (float)wnd.ClientSize.X;
+    _dpiScaleY = (float)wnd.FramebufferSize.Y / (float)wnd.ClientSize.Y;
+    SetPerFrameImGuiData(deltaSeconds, _framebufferWidth, _framebufferHeight);
+    UpdateImGuiInput(wnd);
+    _frameBegun = true;
+    ImGui.NewFrame();
+}
+private void SetPerFrameImGuiData(float deltaSeconds, int framebufferWidth, int framebufferHeight)
 {
     ImGuiIOPtr io = ImGui.GetIO();
-    var mouseState = wnd.MouseState;
-    var keyboardState = wnd.KeyboardState;
-    io.MouseDown[0] = mouseState.IsButtonDown(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Left);
-    io.MouseDown[1] = mouseState.IsButtonDown(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Right);
-    io.MouseDown[2] = mouseState.IsButtonDown(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Middle);
-    float clampedX = Math.Clamp(mouseState.X, 0.0f, _framebufferWidth / _dpiScaleX);
-    float clampedY = Math.Clamp(mouseState.Y, 0.0f, _framebufferHeight / _dpiScaleY);
-    var screenPoint = new SystemVector2(clampedX, clampedY);
-    io.MousePos = screenPoint;
-    Console.WriteLine($"[DEBUG] Mouse Position - X: {clampedX}, Y: {clampedY}");
-    io.MouseWheel = mouseState.ScrollDelta.Y;
-    io.MouseWheelH = mouseState.ScrollDelta.X;
-        }
-        public void Render()
+    io.DisplaySize = new SystemVector2(framebufferWidth / _dpiScaleX, framebufferHeight / _dpiScaleY);
+    io.DisplayFramebufferScale = new SystemVector2(_dpiScaleX, _dpiScaleY);
+    io.DeltaTime = deltaSeconds;
+}
+        private byte BoolToByte(bool value) => value ? (byte)1 : (byte)0;
+        private void UpdateImGuiInput(GameWindow wnd)
         {
-            if (_frameBegun)
-            {
-                _frameBegun = false;
-                ImGui.Render();
-                RenderImDrawData(ImGui.GetDrawData());
-            }
+            ImGuiIOPtr io = ImGui.GetIO();
+            var mouseState = wnd.MouseState;
+            var keyboardState = wnd.KeyboardState;
+            io.MouseDown[0] = mouseState.IsButtonDown(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Left);
+            io.MouseDown[1] = mouseState.IsButtonDown(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Right);
+            io.MouseDown[2] = mouseState.IsButtonDown(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Middle);
+            float clampedX = Math.Clamp(mouseState.X, 0.0f, _framebufferWidth / _dpiScaleX);
+            float clampedY = Math.Clamp(mouseState.Y, 0.0f, _framebufferHeight / _dpiScaleY);
+            var screenPoint = new SystemVector2(clampedX, clampedY);
+            io.MousePos = screenPoint;
+            io.MouseWheel = mouseState.ScrollDelta.Y;
+            io.MouseWheelH = mouseState.ScrollDelta.X;
         }
-        private void RenderImDrawData(ImDrawDataPtr draw_data)
+public void Render()
+{
+    if (_frameBegun)
+    {
+        _frameBegun = false;
+        ImGui.Render();
+        ImDrawDataPtr draw_data = ImGui.GetDrawData();
+        if (draw_data.CmdListsCount == 0)
+            return;
+        GL.Enable(EnableCap.Blend);
+        GL.BlendEquation(BlendEquationMode.FuncAdd);
+        GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+        GL.Disable(EnableCap.CullFace);
+        GL.Disable(EnableCap.DepthTest);  
+        GL.Enable(EnableCap.ScissorTest);
+        GL.Viewport(0, 0, _framebufferWidth, _framebufferHeight);
+        Matrix4 projection = Matrix4.CreateOrthographicOffCenter(
+            0.0f,
+            _framebufferWidth,
+            _framebufferHeight,
+            0.0f,
+            -1.0f,
+            1.0f
+        );
+        GL.UseProgram(_shaderProgram);
+        GL.Uniform1(_attribLocationTex, 0);  
+        GL.UniformMatrix4(_attribLocationProjMtx, false, ref projection);  
+        GL.BindVertexArray(_vertexArray);
+        for (int n = 0; n < draw_data.CmdListsCount; n++)
         {
-            if (draw_data.CmdListsCount == 0)
-                return;
-            GL.Enable(EnableCap.Blend);
-            GL.BlendEquation(BlendEquationMode.FuncAdd);
-            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-            GL.Disable(EnableCap.CullFace);
-            GL.Disable(EnableCap.DepthTest);
-            GL.Enable(EnableCap.ScissorTest);
-            GL.Viewport(0, 0, _framebufferWidth, _framebufferHeight);
-            Console.WriteLine($"[DEBUG] Viewport set to: {_framebufferWidth}x{_framebufferHeight}");
-            Matrix4 projection = Matrix4.CreateOrthographicOffCenter(
-                0.0f,
-                _framebufferWidth,
-                _framebufferHeight,
-                0.0f,
-                -1.0f,
-                1.0f
-            );
-            GL.UseProgram(_shaderProgram);
-            GL.Uniform1(_attribLocationTex, 0);
-            GL.UniformMatrix4(_attribLocationProjMtx, false, ref projection);
-            GL.BindVertexArray(_vertexArray);
-            for (int n = 0; n < draw_data.CmdListsCount; n++)
+            ImDrawListPtr cmd_list = draw_data.CmdLists[n];
+            GL.BindBuffer(BufferTarget.ArrayBuffer, _vertexBuffer);
+            GL.BufferData(BufferTarget.ArrayBuffer, cmd_list.VtxBuffer.Size * Marshal.SizeOf<ImDrawVert>(), cmd_list.VtxBuffer.Data, BufferUsageHint.StreamDraw);
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, _indexBuffer);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, cmd_list.IdxBuffer.Size * sizeof(ushort), cmd_list.IdxBuffer.Data, BufferUsageHint.StreamDraw);
+            for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++)
             {
-                ImDrawListPtr cmd_list = draw_data.CmdLists[n];
-                GL.BindBuffer(BufferTarget.ArrayBuffer, _vertexBuffer);
-                GL.BufferData(BufferTarget.ArrayBuffer, cmd_list.VtxBuffer.Size * Marshal.SizeOf<ImDrawVert>(), cmd_list.VtxBuffer.Data, BufferUsageHint.StreamDraw);
-                GL.BindBuffer(BufferTarget.ElementArrayBuffer, _indexBuffer);
-                GL.BufferData(BufferTarget.ElementArrayBuffer, cmd_list.IdxBuffer.Size * sizeof(ushort), cmd_list.IdxBuffer.Data, BufferUsageHint.StreamDraw);
-                for (int cmd_i = 0; cmd_i < cmd_list.CmdBuffer.Size; cmd_i++)
+                ImDrawCmdPtr pcmd = cmd_list.CmdBuffer[cmd_i];
+                if (pcmd.UserCallback != IntPtr.Zero)
                 {
-                    ImDrawCmdPtr pcmd = cmd_list.CmdBuffer[cmd_i];
-                    if (pcmd.UserCallback != IntPtr.Zero)
-                    {
-                        throw new NotImplementedException();
-                    }
-                    else
-                    {
-                        GL.BindTexture(TextureTarget.Texture2D, (int)pcmd.TextureId);
-                        int scissorX = (int)(pcmd.ClipRect.X);
-                        int scissorY = (int)(_framebufferHeight - pcmd.ClipRect.W);
-                        int scissorWidth = (int)(pcmd.ClipRect.Z - pcmd.ClipRect.X);
-                        int scissorHeight = (int)(pcmd.ClipRect.W - pcmd.ClipRect.Y);
-                        GL.Scissor(scissorX, scissorY, scissorWidth, scissorHeight);
-                        Console.WriteLine($"[DEBUG] Scissor Rect - X: {scissorX}, Y: {scissorY}, Width: {scissorWidth}, Height: {scissorHeight}");
-                        GL.DrawElementsBaseVertex(
-                            PrimitiveType.Triangles,
-                            (int)pcmd.ElemCount,
-                            DrawElementsType.UnsignedShort,
-                            (IntPtr)(pcmd.IdxOffset * sizeof(ushort)),
-                            (int)pcmd.VtxOffset
-                        );
-                    }
+                    throw new NotImplementedException();  
+                }
+                else
+                {
+                    GL.BindTexture(TextureTarget.Texture2D, (int)pcmd.TextureId);
+                    int scissorX = (int)(pcmd.ClipRect.X);
+                    int scissorY = (int)(_framebufferHeight - pcmd.ClipRect.W);
+                    int scissorWidth = (int)(pcmd.ClipRect.Z - pcmd.ClipRect.X);
+                    int scissorHeight = (int)(pcmd.ClipRect.W - pcmd.ClipRect.Y);
+                    GL.Scissor(scissorX, scissorY, scissorWidth, scissorHeight);
+                    GL.DrawElementsBaseVertex(
+                        PrimitiveType.Triangles,
+                        (int)pcmd.ElemCount,
+                        DrawElementsType.UnsignedShort,
+                        (IntPtr)(pcmd.IdxOffset * sizeof(ushort)),
+                        (int)pcmd.VtxOffset
+                    );
                 }
             }
-            GL.Disable(EnableCap.ScissorTest);
-            GL.Enable(EnableCap.CullFace);
-            GL.Enable(EnableCap.DepthTest);
         }
+        GL.Disable(EnableCap.ScissorTest);
+        GL.Disable(EnableCap.Blend);  
+        GL.Enable(EnableCap.DepthTest);  
+        GL.BindVertexArray(0);
+        GL.UseProgram(0);
+    }
+}
         public void WindowResized(int framebufferWidth, int framebufferHeight)
         {
             _framebufferWidth = framebufferWidth;
@@ -448,5 +461,4 @@ private void UpdateImGuiInput(GameWindow wnd)
             GL.DeleteVertexArray(_vertexArray);
         }
     }
-
 }
